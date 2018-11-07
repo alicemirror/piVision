@@ -1,3 +1,6 @@
+#include <SPI.h>                         //added
+#include <WiFi.h>                     //added
+//#include <WiFiMDNSResponder.h>           //added
 #include <Adafruit_NeoPixel.h>
 #include "Keyboard.h"
 
@@ -5,10 +8,37 @@
   #include <avr/power.h>
 #endif
 
+
+//added-----------------------------------------------------------------------------
+// the IP address:
+IPAddress ip(192, 168, 5, 5);
+
+char ssid[] = "piVIsion";     // your network SSID (name) 
+char pass[] = "piVision";     // your network password    
+int keyIndex = 0;             // your network key Index number (needed only for WEP) 
+
+char mdnsName[] = "wifi101"; // the MDNS name that the board will respond to
+// Note that the actual MDNS name will have '.local' after
+// the name above, so "wifi101" will be accessible on
+// the MDNS name "wifi101.local".
+String getContent="";
+bool isGet=false;
+String gotContent="";
+char* buf="";
+int status = WL_IDLE_STATUS;
+//-----------------------------------------------------------------------------------
+
+
+
 #define PIN 6           // NeoPixel PIN
 #define CONTROL_PIN 7   // Activity Enable PIN
 #define NUM_LEDS 8
 #define BRIGHTNESS 50
+
+//added----------------------------------------------------------------
+// Create a MDNS responder to listen and respond to MDNS name requests.
+//WiFiMDNSResponder mdnsResponder;
+//---------------------------------------------------------------------
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
 
@@ -33,7 +63,58 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800
 #define PURPLE3 strip.Color(96, 16, 96)
 #define PURPLE4 strip.Color(96, 16, 64)
 
+//added---------------
+//WiFiServer server(80);
+//--------------------
+
 void setup() {
+  
+  //added-------------------------------------------------------------------------
+  //Initialize serial and wait for port to open:
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  
+  // check for the presence of the shield:
+  //if (WiFi.status() == WL_NO_SHIELD) {
+  //  Serial.println("WiFi shield not present");
+    // don't continue:
+  //  while (true);
+  //}
+
+  WiFi.config(ip);
+
+  // attempt to connect to Wifi network:
+  while ( status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(ssid);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
+
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+
+  // you're connected now, so print out the status:
+  //printWifiStatus();
+  // print your WiFi shield's IP address:
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+    
+  //server.begin();
+  // Setup the MDNS responder to listen to the configured name.
+  // NOTE: You _must_ call this _after_ connecting to the WiFi network and
+  // being assigned an IP address.
+  //if (!mdnsResponder.begin(mdnsName)) {
+  //  Serial.println("Failed to start MDNS responder!");
+  //  while(1);
+  //}
+  //Serial.print("Server listening at http://");
+  //Serial.print(mdnsName);
+  //Serial.println(".local/");  
+  //--------------------------------------------------------------------------------  
+  
   // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
   #if defined (__AVR_ATtiny85__)
     if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
@@ -54,6 +135,15 @@ void setup() {
 void loop() {
     int j;
 
+  // Call the update() function on the MDNS responder every loop iteration to
+  // make sure it can detect and respond to name requests.
+  //mdnsResponder.poll();
+
+  // listen for incoming clients
+  //WiFiClient client = server.available();
+  //if (client) {
+  //  Serial.println("new client");
+  //}
   if(digitalRead(CONTROL_PIN)) {
 
     //Keyboard.print("Keyboard Emulation Works");
@@ -213,4 +303,21 @@ uint32_t Wheel(byte WheelPos) {
   }
   WheelPos -= 170;
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void printWifiStatus() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
 }

@@ -1,20 +1,23 @@
-#include <SPI.h>                         //added
-#include <WiFi.h>                     //added
-//#include <WiFiMDNSResponder.h>           //added
+#include <SPI.h>
+#include <WiFi101.h>
+//#include <WiFiMDNSResponder.h>
 #include <Adafruit_NeoPixel.h>
 #include "Keyboard.h"
+#include "Streaming.h"
 
 #ifdef __AVR__
   #include <avr/power.h>
 #endif
 
+#define _DEBUG
 
-//added-----------------------------------------------------------------------------
 // the IP address:
-IPAddress ip(192, 168, 5, 5);
+IPAddress ip(192, 168, 57, 120);
 
-char ssid[] = "piVIsion";     // your network SSID (name) 
-char pass[] = "piVision";     // your network password    
+//char ssid[] = "piVIsion";     // your network SSID (name) 
+//char pass[] = "piVision";     // your network password    
+char ssid[] = "QSpinVisitor";     // your network SSID (name) 
+char pass[] = "QSpinGuest2015!";     // your network password    
 int keyIndex = 0;             // your network key Index number (needed only for WEP) 
 
 char mdnsName[] = "wifi101"; // the MDNS name that the board will respond to
@@ -26,19 +29,16 @@ bool isGet=false;
 String gotContent="";
 char* buf="";
 int status = WL_IDLE_STATUS;
-//-----------------------------------------------------------------------------------
-
-
 
 #define PIN 6           // NeoPixel PIN
 #define CONTROL_PIN 7   // Activity Enable PIN
 #define NUM_LEDS 8
 #define BRIGHTNESS 50
 
-//added----------------------------------------------------------------
+#define CONNECTION_DELAY 5000 // Seconds to wait after WiFi connection comletes
+
 // Create a MDNS responder to listen and respond to MDNS name requests.
 //WiFiMDNSResponder mdnsResponder;
-//---------------------------------------------------------------------
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
 
@@ -63,44 +63,36 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800
 #define PURPLE3 strip.Color(96, 16, 96)
 #define PURPLE4 strip.Color(96, 16, 64)
 
-//added---------------
 //WiFiServer server(80);
-//--------------------
 
 void setup() {
-  
-  //added-------------------------------------------------------------------------
-  //Initialize serial and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  
-  // check for the presence of the shield:
-  //if (WiFi.status() == WL_NO_SHIELD) {
-  //  Serial.println("WiFi shield not present");
-    // don't continue:
-  //  while (true);
-  //}
 
+#ifdef _DEBUG
+  Serial.begin(115000);
+#endif
+  
   WiFi.config(ip);
 
   // attempt to connect to Wifi network:
   while ( status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(ssid);
+#ifdef _DEBUG
+    Serial << "Attempting to connect to SSID: "<< ssid << endl;
+#endif
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
-
     // wait 10 seconds for connection:
-    delay(10000);
+    delay(CONNECTION_DELAY);
   }
+#ifdef _DEBUG
+    Serial << "Connected to " << ssid << endl;
+#endif
 
-  // you're connected now, so print out the status:
-  //printWifiStatus();
-  // print your WiFi shield's IP address:
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
+#ifdef _DEBUG
+  printWifiStatus();
+#endif
+//  // print your WiFi shield's IP address:
+//  Serial.print("IP Address: ");
+//  Serial.println(WiFi.localIP());
     
   //server.begin();
   // Setup the MDNS responder to listen to the configured name.
@@ -305,6 +297,7 @@ uint32_t Wheel(byte WheelPos) {
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
+#ifdef _DEBUG
 void printWifiStatus() {
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
@@ -321,3 +314,4 @@ void printWifiStatus() {
   Serial.print(rssi);
   Serial.println(" dBm");
 }
+#endif

@@ -1,6 +1,6 @@
 #include <SPI.h>
 #include <WiFi101.h>
-//#include <WiFiMDNSResponder.h>
+#include <WiFiMDNSResponder.h>
 #include <Adafruit_NeoPixel.h>
 #include "Keyboard.h"
 #include "Streaming.h"
@@ -38,7 +38,7 @@ int status = WL_IDLE_STATUS;
 #define CONNECTION_DELAY 5000 // Seconds to wait after WiFi connection comletes
 
 // Create a MDNS responder to listen and respond to MDNS name requests.
-//WiFiMDNSResponder mdnsResponder;
+WiFiMDNSResponder mdnsResponder;
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
 
@@ -63,48 +63,45 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800
 #define PURPLE3 strip.Color(96, 16, 96)
 #define PURPLE4 strip.Color(96, 16, 64)
 
-//WiFiServer server(80);
+WiFiServer server(80);
 
 void setup() {
 
-#ifdef _DEBUG
-  Serial.begin(115000);
-#endif
+  #ifdef _DEBUG
+    Serial.begin(9600);
+  #endif
   
   WiFi.config(ip);
 
   // attempt to connect to Wifi network:
   while ( status != WL_CONNECTED) {
-#ifdef _DEBUG
-    Serial << "Attempting to connect to SSID: "<< ssid << endl;
-#endif
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection:
-    delay(CONNECTION_DELAY);
+     #ifdef _DEBUG
+       Serial << "Attempting to connect to SSID: "<< ssid << endl;
+     #endif
+     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+     status = WiFi.begin(ssid, pass);
+     // wait 10 seconds for connection:
+     delay(CONNECTION_DELAY);
   }
-#ifdef _DEBUG
+  #ifdef _DEBUG
     Serial << "Connected to " << ssid << endl;
-#endif
+  #endif
 
-#ifdef _DEBUG
-  printWifiStatus();
-#endif
-//  // print your WiFi shield's IP address:
-//  Serial.print("IP Address: ");
-//  Serial.println(WiFi.localIP());
-    
-  //server.begin();
+  #ifdef _DEBUG
+    printWifiStatus();
+  #endif
+  server.begin();
+
   // Setup the MDNS responder to listen to the configured name.
   // NOTE: You _must_ call this _after_ connecting to the WiFi network and
   // being assigned an IP address.
-  //if (!mdnsResponder.begin(mdnsName)) {
-  //  Serial.println("Failed to start MDNS responder!");
-  //  while(1);
-  //}
-  //Serial.print("Server listening at http://");
-  //Serial.print(mdnsName);
-  //Serial.println(".local/");  
+  if (!mdnsResponder.begin(mdnsName)) {
+    Serial.println("Failed to start MDNS responder!");
+    while(1);
+  }
+  Serial.print("Server listening at http://");
+  Serial.print(mdnsName);
+  Serial.println(".local/");  
   //--------------------------------------------------------------------------------  
   
   // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
@@ -129,13 +126,13 @@ void loop() {
 
   // Call the update() function on the MDNS responder every loop iteration to
   // make sure it can detect and respond to name requests.
-  //mdnsResponder.poll();
+  mdnsResponder.poll();
 
   // listen for incoming clients
-  //WiFiClient client = server.available();
-  //if (client) {
-  //  Serial.println("new client");
-  //}
+  WiFiClient client = server.available();
+  if (client) {
+    Serial.println("new client");
+  }
   if(digitalRead(CONTROL_PIN)) {
 
     //Keyboard.print("Keyboard Emulation Works");

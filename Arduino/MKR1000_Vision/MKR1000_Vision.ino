@@ -1,227 +1,170 @@
-#include <SPI.h>
-#include <WiFi101.h>
-#include <WiFiMDNSResponder.h>
-#include <Adafruit_NeoPixel.h>
-#include "Keyboard.h"
-#include "Streaming.h"
+#include "globals.h"
 
-#ifdef __AVR__
-  #include <avr/power.h>
+/**
+   Application initialization.
+   The setup include the AP connection and server setting
+   waiting for character sending through TCP/IP protocol
+*/
+void setup() {
+  int retries; ///< retries counter
+
+#ifdef _DEBUG
+  Serial.begin(115000);
 #endif
 
-#define _DEBUG
-
-// the IP address:
-IPAddress ip(192, 168, 57, 120);
-
-//char ssid[] = "piVIsion";     // your network SSID (name) 
-//char pass[] = "piVision";     // your network password    
-char ssid[] = "QSpinVisitor";     // your network SSID (name) 
-char pass[] = "QSpinGuest2015!";     // your network password    
-int keyIndex = 0;             // your network key Index number (needed only for WEP) 
-
-char mdnsName[] = "wifi101"; // the MDNS name that the board will respond to
-// Note that the actual MDNS name will have '.local' after
-// the name above, so "wifi101" will be accessible on
-// the MDNS name "wifi101.local".
-String getContent="";
-bool isGet=false;
-String gotContent="";
-char* buf="";
-int status = WL_IDLE_STATUS;
-
-#define PIN 6           // NeoPixel PIN
-#define CONTROL_PIN 7   // Activity Enable PIN
-#define NUM_LEDS 8
-#define BRIGHTNESS 50
-
-#define CONNECTION_DELAY 5000 // Seconds to wait after WiFi connection comletes
-
-// Create a MDNS responder to listen and respond to MDNS name requests.
-WiFiMDNSResponder mdnsResponder;
-
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
-
-// Predefined colors
-#define PINK strip.Color(255, 64, 64)
-#define WHITE strip.Color(255, 255, 255)
-
-#define FIRE1 strip.Color(255, 64, 0)
-#define FIRE2 strip.Color(255, 96, 0)
-#define FIRE3 strip.Color(255, 128, 0)
-#define FIRE4 strip.Color(255, 96, 32)
-#define FIRE5 strip.Color(255, 32, 64)
-#define FIRE6 strip.Color(255, 32, 96)
-
-#define BLUE1 strip.Color(0, 0, 255)
-#define BLUE2 strip.Color(0, 32, 255)
-#define BLUE3 strip.Color(0, 64, 255)
-#define BLUE4 strip.Color(0, 96, 255)
-
-#define PURPLE1 strip.Color(96, 16, 255)
-#define PURPLE2 strip.Color(96, 16, 128)
-#define PURPLE3 strip.Color(96, 16, 96)
-#define PURPLE4 strip.Color(96, 16, 64)
-
-WiFiServer server(80);
-
-void setup() {
-
-  #ifdef _DEBUG
-    Serial.begin(115000);
-  #endif
-  
-  WiFi.config(ip);
-
-  // attempt to connect to Wifi network:
-  while ( status != WL_CONNECTED) {
-     #ifdef _DEBUG
-       Serial << "Attempting to connect to SSID: "<< ssid << endl;
-     #endif
-     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-     status = WiFi.begin(ssid, pass);
-     // wait 10 seconds for connection:
-     delay(CONNECTION_DELAY);
-  }
-  #ifdef _DEBUG
-    Serial << "Connected to " << ssid << endl;
-  #endif
-
-  #ifdef _DEBUG
-    printWifiStatus();
-  #endif
-  server.begin();
-
-  // Setup the MDNS responder to listen to the configured name.
-  // NOTE: You _must_ call this _after_ connecting to the WiFi network and
-  // being assigned an IP address.
-  if (!mdnsResponder.begin(mdnsName)) {
-    Serial.println("Failed to start MDNS responder!");
-    while(1);
-  }
-  Serial.print("Server listening at http://");
-  Serial.print(mdnsName);
-  Serial.println(".local/");  
-  //--------------------------------------------------------------------------------  
-  
-  // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
-  #if defined (__AVR_ATtiny85__)
-    if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
-  #endif
   pinMode(CONTROL_PIN, INPUT);
-  
-  // End of trinket special code
+
+  // Initialize the NeoPixel
   strip.setBrightness(BRIGHTNESS);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 
-    if(CONTROL_PIN) {
-        Keyboard.begin();
-    }
-  
-}
+  setColor(FIRE1);
+  delay(INIT_DELAY);
 
+  WiFi.config(ip);
+
+  // attempt to connect to Wifi network:
+  retries = 0;
+  while ( (connectStatus != WL_CONNECTED) && (retries < MAX_CONNECTION_RETRIES)) {
+#ifdef _DEBUG
+    Serial << "Connection attempt " << retries << endl;
+#endif
+    // Connect to WPA/WPA2 network.
+    // Change this line if using open or WEP network:
+    connectStatus = WiFi.begin(NET_SSID, NET_PASSWD);
+    // wait before tring connecting again
+    delayLoop(FIRE2);
+    retries++; // Increment the retry limit counter
+  }
+
+  // Check for connecton error
+  if (connectStatus != WL_CONNECTED) {
+    errorState = true;
+    flashSignalSequence(PURPLE3);
+    setColor(PIXRED);
+#ifdef _DEBUG
+    Serial << "Connection error. Stopped." << endl;
+#endif
+  } // Connection error
+  else {
+    // Connection is ok, setup will continue
+#ifdef _DEBUG
+    Serial << "Connected" << endl;
+    printWifiStatus();
+#endif
+
+    // Start the IP server
+    server.begin();
+
+    // Setup the MDNS responder to listen to the configured name.
+    // NOTE: You _must_ call this _after_ connecting to the WiFi network and
+    // being assigned an IP address.
+    if (!mdnsResponder.begin(MDNS_NAME)) {
+#ifdef _DEBUG
+      Serial << "Failed to start MDNS responder. Stopped" << endl;
+#endif
+      errorState = true;
+      flashSignalSequence(PIXRED);
+    setColor(PIXRED);
+    } // Responder startup error
+    else {
+      flashSignalSequence(PIXGREEN);
+#ifdef _DEBUG
+      Serial << "Server http://" << MDNS_NAME << ".local ready and listening" << endl;
+#endif
+      // Check if the control pin is disabled else the
+      // keyboard emulation is not enabled. The switch
+      // state permits to program and debug the application
+      // When the application runs in production the debug flag
+      // should be undefined
+      if (digitalRead(CONTROL_PIN) == false) {
+        Keyboard.begin();
+      } // Production mode
+      else {
+        // Note that in this case the error condition is used
+        // to disable the loop (control pint is enabled so the
+        // development mode is set
+        errorState = true;
+      } // Development mode
+      // Display is set to standby condition
+      colorWipe(CYAN, STRIP_WIPE_DELAY);
+      setColor(CYAN);
+    } // Responder started correctly
+  } // WiFi connection is ok
+} // Setup
+
+/**
+   Main application loop. The loop runs only if the control
+   pin is set (low) and the initialization setup() function
+   has not generated any error.
+*/
 void loop() {
+  // Loop runs only if no error condition has been generated
+  // by setup()
+  if (!errorState) {
     int j;
 
-  // Call the update() function on the MDNS responder every loop iteration to
-  // make sure it can detect and respond to name requests.
-  mdnsResponder.poll();
+    // Call the update() function on the MDNS responder every loop iteration to
+    // make sure it can detect and respond to name requests.
+    mdnsResponder.poll();
 
-  // listen for incoming clients
-  WiFiClient client = server.available();
-  if (client) {
-    Serial.println("new client");
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        Serial.write(c);        
+    // listen for incoming clients
+    WiFiClient client = server.available();
+    if (client) {
+      Serial.println("new client");
+      while (client.connected()) {
+        if (client.available()) {
+          char c = client.read();
+          Serial.write(c);
+        }
       }
     }
-  }
-  if(digitalRead(CONTROL_PIN)) {
+    if (digitalRead(CONTROL_PIN)) {
 
-    //Keyboard.print("Keyboard Emulation Works");
-    Keyboard.print('Starting a light loop...!@#0((*)&@adfqropivjio');
-    delay(500);
+      //Keyboard.print("Keyboard Emulation Works");
+      Keyboard.print('Starting a light loop...!@#0((*)&@adfqropivjio');
+      delay(500);
 
-    for(j = 0; j < 22; j++) {
+      for (j = 0; j < 22; j++) {
         Keyboard.press(KEY_BACKSPACE);
+      }
+
+      Keyboard.press( KEY_RETURN);
+
+      Keyboard.releaseAll();
     }
-
-    Keyboard.press( KEY_RETURN);
-
-    Keyboard.releaseAll();    
-    
-    // ==========================================
-    // TEST FUNCTIONS
-    // ==========================================
-    
-    // Rotate the strip with one color on and off 
-    colorWipeOnOff(FIRE1, 10);
-    colorWipeOnOff(FIRE2, 10);
-    colorWipeOnOff(FIRE3, 10);
-    
-    // Rotate the strip with one color
-    colorWipe(FIRE1, 10);
-    colorWipe(FIRE2, 10);
-    colorWipe(FIRE3, 10);
-    colorWipe(FIRE4, 10);
-    colorWipe(FIRE5, 10);
-    colorWipe(FIRE6, 10);
-    
-    // Flash colors
-    colorFlash(FIRE1, 10);
-    colorFlash(FIRE2, 10);
-    colorFlash(FIRE3, 10);
-    colorFlash(FIRE4, 10);
-    colorFlash(FIRE5, 10);
-    colorFlash(FIRE6, 10);
-    
-    // Fixed colors
-    setColor(FIRE1);
-    delay(1000);
-    setColor(FIRE2);
-    delay(1000);
-    setColor(FIRE3);
-    delay(1000);
-    setColor(FIRE4);
-    delay(1000);
-    setColor(FIRE5);
-    delay(1000);
-    setColor(FIRE6);
-    delay(1000);
-    
-    setColor(BLUE1);
-    delay(500);
-    setColor(BLUE2);
-    delay(500);
-    setColor(BLUE3);
-    delay(500);
-    setColor(BLUE4);
-    delay(500);
-    
-    setColor(PURPLE1);
-    delay(500);
-    setColor(PURPLE2);
-    delay(500);
-    setColor(PURPLE1);
-    delay(500);
-    setColor(PURPLE4);
-    delay(500);
-
-    rainbow(10);
-    rainbowCycle(10);
-    }
+  } // No error condition
 }
 
 // =====================================================
 //  NeoPixel Function
 // =====================================================
 
+void flashSignalSequence(uint32_t c) {
+  int j;
+
+  for (j = 0; j < CONNECTION_LOOP; j++) {
+    colorFlash(c, CONNECTION_LOOP_DELAY);
+  }
+}
+
+void delayLoop(uint32_t c) {
+  delayLoop(c, CONNECTION_DELAY_LOOP);
+}
+
+void delayLoop(uint32_t c, int cycles) {
+  int j;
+
+  // Wiping delay loop
+  for (j = 0; j < cycles; j++) {
+    colorWipeOnOff(c, CONNECTION_DELAY);
+  }
+}
+
 //! Fill the dots one after the other with a color
 void colorWipe(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip.numPixels(); i++) {
+  for (uint16_t i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
     delay(wait);
@@ -232,13 +175,13 @@ void colorWipe(uint32_t c, uint8_t wait) {
 //! Then off in the same sequence
 void colorWipeOnOff(uint32_t c, uint8_t wait) {
   // Pixels on
-  for(uint16_t i = 0; i < strip.numPixels(); i++) {
+  for (uint16_t i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
     delay(wait);
   }
   // Pixels off
-  for(uint16_t i = 0; i < strip.numPixels(); i++) {
+  for (uint16_t i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, 0x00);
     strip.show();
     delay(wait);
@@ -246,26 +189,27 @@ void colorWipeOnOff(uint32_t c, uint8_t wait) {
 }
 
 void colorFlash(uint32_t c, uint8_t wait) {
-    setColor(c);
-    delay(wait);
-    setColor(0);
+  setColor(c);
+  delay(wait);
+  setColor(0);
+  delay(wait);
 }
 
 void setColor(uint32_t c) {
-    uint16_t i;
-    
-    for(i = 0; i < strip.numPixels(); i++) {
-        strip.setPixelColor(i, c);
-    }
-    strip.show();
+  uint16_t i;
+
+  for (i = 0; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+  }
+  strip.show();
 }
 
 void rainbow(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256; j++) {
-    for(i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel((i+j) & 255));
+  for (j = 0; j < 256; j++) {
+    for (i = 0; i < strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel((i + j) & 255));
     }
     strip.show();
     delay(wait);
@@ -276,8 +220,8 @@ void rainbow(uint8_t wait) {
 void rainbowCycle(uint8_t wait) {
   uint16_t i, j;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strip.numPixels(); i++) {
+  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
+    for (i = 0; i < strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
     }
     strip.show();
@@ -289,10 +233,10 @@ void rainbowCycle(uint8_t wait) {
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
+  if (WheelPos < 85) {
     return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
   }
-  if(WheelPos < 170) {
+  if (WheelPos < 170) {
     WheelPos -= 85;
     return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
   }
@@ -300,8 +244,8 @@ uint32_t Wheel(byte WheelPos) {
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-#ifdef _DEBUG
 void printWifiStatus() {
+#ifdef _DEBUG
   // print the SSID of the network you're attached to:
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
@@ -316,5 +260,5 @@ void printWifiStatus() {
   Serial.print("signal strength (RSSI):");
   Serial.print(rssi);
   Serial.println(" dBm");
-}
 #endif
+}

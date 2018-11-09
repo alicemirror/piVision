@@ -68,7 +68,7 @@ WiFiServer server(80);
 void setup() {
 
   #ifdef _DEBUG
-    Serial.begin(9600);
+    Serial.begin(115000);
   #endif
   
   WiFi.config(ip);
@@ -132,6 +132,12 @@ void loop() {
   WiFiClient client = server.available();
   if (client) {
     Serial.println("new client");
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        Serial.write(c);        
+      }
+    }
   }
   if(digitalRead(CONTROL_PIN)) {
 

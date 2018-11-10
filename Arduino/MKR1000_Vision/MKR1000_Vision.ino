@@ -102,7 +102,7 @@ void setup() {
   // Check for connecton error
   if (connectStatus != WL_CONNECTED) {
     errorState = true;
-    flashSignalSequence(PURPLE3);
+    flashSignalSequence(PIXRED);
     setColor(PIXRED);
 #ifdef _DEBUG
     Serial << "Connection error. Stopped." << endl;
@@ -188,19 +188,17 @@ void loop() {
       showHIDStatus();
       if (client.connected()) {
         if (client.available()) {
-          hidStatus = HID_RECEIVE;
-          showHIDStatus();
-          clientCommand = client.read();
-          processCommand();
+          char c = client.read();
+          processCommand(c);
         } // Client available
-        else {
-          // Client is connected but no new commands are sent,
-          // process eventually only the motion commands
-          processMotion();
-        } // No new commands received
       } // client connected
     } // Available data
-
+else {
+    // Client is connected but no new commands are sent,
+    // process eventually only the motion commands
+    processCommand(clientCommand);
+//    processMotion();
+}
     // Check if the development mode has been set via
     // hardware switch. After setting to the maintenance
     // mode the device should be reset as this condition
@@ -222,66 +220,91 @@ void loop() {
 // =====================================================
 
 /**
- * Executes the curret command process only if it
- * is for motion
- */
-void processMotion() {
-    if( (clientCommand == CURSOR_LEFT) ||
-    (clientCommand == CURSOR_RIGHT) ||
-    (clientCommand == CURSOR_UP) ||
-    (clientCommand == CURSOR_DOWN) ){
-        processCommand();
-    }
-}
-
-/**
    Process the queued command from the client
+   If the processed comand is a valid character it is
+   saved on the global command variable
 */
-void processCommand() {
+void processCommand(char c) {
 
-  switch (clientCommand) {
+  switch (c) {
     case CURSOR_LEFT:
       hidStatus = HID_MOTION;
+      showHIDStatus();
+      clientCommand = c;
       Mouse.move(0 - MOUSE_STEPS, 0, 0);
       break;
     case CURSOR_RIGHT:
       hidStatus = HID_MOTION;
+      showHIDStatus();
+      clientCommand = c;
       Mouse.move(MOUSE_STEPS, 0, 0);
       break;
     case CURSOR_UP:
       hidStatus = HID_MOTION;
-      Mouse.move(0, MOUSE_STEPS, 0);
+      showHIDStatus();
+      clientCommand = c;
+      Mouse.move(0, 0 - MOUSE_STEPS, 0);
       break;
     case CURSOR_DOWN:
       hidStatus = HID_MOTION;
-      Mouse.move(0, 0 - MOUSE_STEPS, 0);
+      showHIDStatus();
+      clientCommand = c;
+      Mouse.move(0, MOUSE_STEPS, 0);
       break;
     case CURSOR_PAUSE:
       hidStatus = HID_IDLEON;
+      showHIDStatus();
+      clientCommand = c;
       break;
     case CLICK_LEFT:
-      hidStatus = HID_MOTION;
+      hidStatus = HID_PRESSLEFT;
+      showHIDStatus();
+      clientCommand = 0x00;
+      Mouse.click(MOUSE_LEFT);
+      hidStatus = HID_IDLEON;
+      showHIDStatus();
       break;
     case CLICK_MID:
-      hidStatus = HID_MOTION;
+      hidStatus = HID_PRESSMID;
+      showHIDStatus();
+      clientCommand = 0x00;
+      Mouse.click(MOUSE_MIDDLE);
+      hidStatus = HID_IDLEON;
+      showHIDStatus();
       break;
     case CLICK_RIGHT:
-      hidStatus = HID_MOTION;
+      hidStatus = HID_PRESSRIGHT;
+      showHIDStatus();
+      clientCommand = 0x00;
+      Mouse.click(MOUSE_RIGHT);
+      hidStatus = HID_IDLEON;
+      showHIDStatus();
       break;
     case PRESS_LEFT:
       hidStatus = HID_PRESSLEFT;
+      showHIDStatus();
+      Mouse.press(MOUSE_LEFT);
+      clientCommand = 0x00;
       break;
     case PRESS_MID:
       hidStatus = HID_PRESSMID;
+      showHIDStatus();
+      Mouse.press(MOUSE_MIDDLE);
+      clientCommand = 0x00;
       break;
     case PRESS_RIGHT:
       hidStatus = HID_PRESSRIGHT;
+      showHIDStatus();
+      Mouse.press(MOUSE_RIGHT);
+      clientCommand = 0x00;
       break;
     case BUTTON_RELEASE:
       hidStatus = HID_IDLEON;
+      showHIDStatus();
+      Mouse.release();
+      clientCommand = c;
       break;
   } // Comand case switch
-  showHIDStatus();
 }
 
 /**
@@ -295,7 +318,7 @@ void showHIDStatus() {
       setStatusPix(CYAN);
       break;
     case HID_IDLEON:
-      setStatusPix(PIXWHITE);
+      setStatusPix(FIRE1);
       break;
     case HID_RECEIVE:
       setStatusPix(FIRE5);
@@ -304,7 +327,7 @@ void showHIDStatus() {
       setStatusPix(FIRE1);
       break;
     case HID_MOTION:
-      setStatusPix(PIXWHITE);
+      setStatusPix(FIRE4);
       break;
     case HID_PRESSLEFT:
       setStatusPix(FIRE6);
@@ -313,7 +336,7 @@ void showHIDStatus() {
       setStatusPix(BLUE4);
       break;
     case HID_PRESSRIGHT:
-      setStatusPix(PURPLE4);
+      setStatusPix(PIXGREEN);
       break;
   }
 }

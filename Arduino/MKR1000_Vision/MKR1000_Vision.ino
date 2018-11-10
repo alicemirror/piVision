@@ -1,3 +1,64 @@
+/**
+ * @file MKR1000_Vision.ino
+ * @brief Main application to control HID via WiFi
+ * 
+ * This application implement both keyboard and mouse to control
+ * a computer from remote via WiFi. The prototype application, for
+ * impaired mobility persons works in conjunction with the
+ * piVision prototype using a Raspberry PI3 B+ and a Omron Vision
+ * camera device for movements and gestures detection.
+ * 
+ * @section sponsoring Main Sponsors
+ * Dekimo Experts <dekimo.com>
+ * Element14 <element14.com>
+ * 
+ * @section note Note on the Project
+ * This prototype aims to explore the possibilities and limits
+ * offered by the integration of the Omron Vision component creating
+ * a smart device badrf on the Raspberry PI linux embedded and the
+ * MKR1000 IoT Arduino family of microprocessors to create OSHW, Open Source
+ * low cost and easy to use devices to support seriousl impaired mobility
+ * users.\n
+ * One of the most important considerations about the usability of this device
+ * is its non-impacting approach to the host computer: no drivers or special
+ * applications or software should be installed. The only condition is the
+ * availability of on-screenkeyboard; this is part of the standard accessibility
+ * features available on almost all the OS: Windows, Linux, OSX.
+ * 
+ * @section colors Color Coding
+ * The MKR1000 Vision is a simple device to be attacched to a computer USB 2.0+
+ * port. It is recognized as an external Keyboard/Mouse device. A 8-LEDs NeoPixel
+ * RGB strip generates constant feedback to the user during the system startup and
+ * the normal use. \n
+ * 
+ * @subsection systart On System Startup
+ * When the system starts organge wiping scroll means the device is connecting to
+ * the WiFi. If conection does not succeed, it flashes 5 times purple then stop
+ * showing a fixed red light.
+ * 
+ * After the WiFi connection succeds, the device creates a TCP/IP server accessible on
+ * the local network through the port 80 and the display flshes 5 times green, the it is
+ * ready to receive command from the guest. If for some reason it is not possible to
+ * initialize the server the device flashes 5 times the red light then shows a fixed red
+ * light and stops.
+ * 
+ * When the startup procedure completes the device shows a fixed blue light for 5 seconds
+ * then it is ready to receive commands.
+ * 
+ * @note If the blue light is fixed, the device is in development mode for programming and
+ * testing. The received comands from the WiFi guest are sent to the serial terminal and
+ * the device does not interact with the computer host. This is to prevent the difficult to
+ * test, program and upgrade the device firmware when it runs as a HID device.
+ * 
+ * @subsection Operating Conditions
+ * 
+ * @version 0.1
+ * @author Enrico Miglino <enrico.miglino@dekimo.com>
+ * @author Balearic Dynamics <balearicdynamics@gmail.com>
+ * @date November 2018
+ * @license CC 3.0 ND-NC-SA
+ */
+ 
 #include "globals.h"
 
 /**
@@ -105,8 +166,9 @@ void loop() {
   if (!errorState) {
     int j;
 
-    // Call the update() function on the MDNS responder every loop iteration to
-    // make sure it can detect and respond to name requests.
+    // Call the update() function on the MDNS responder 
+    // every loop iteration to make sure it can detect 
+    // and respond to the requests.
     mdnsResponder.poll();
 
     // listen for incoming clients

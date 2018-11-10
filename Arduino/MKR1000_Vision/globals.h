@@ -7,6 +7,7 @@
 #include <WiFiMDNSResponder.h>
 #include <Adafruit_NeoPixel.h>
 #include "Keyboard.h"
+#include "Mouse.h"
 #include "Streaming.h"
 
 #ifdef __AVR__
@@ -61,11 +62,6 @@ WiFiMDNSResponder mdnsResponder;
 //! Network key Index number (needed only for WEP)
 //! Not used here
 // int keyIndex = 0;             
-
-String getContent = "";
-bool isGet = false;
-String gotContent = "";
-char* buf = "";
 
 int connectStatus = WL_IDLE_STATUS;
 

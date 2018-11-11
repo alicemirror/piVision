@@ -58,10 +58,9 @@ char clientCommand;
 //! Status of the emulator
 //! The HID status reflects the display visualization
 int hidStatus;
-//! Current mouse x position
-int mouseX;
-//! Current mouse y position
-int mouseY;
+//! Motion wipe counter shows a continuous wiping strip
+//! Until a motion command is active
+int motionWipeCounter;
 
 #define MOUSE_STEPS 5  ///< Mouse steps every move request
 
@@ -75,7 +74,9 @@ int mouseY;
 #define HID_PRESSLEFT 6     ///< The HID button is pressed (stay pressed)
 #define HID_PRESSMID 7      ///< The HID button is pressed (stay pressed)
 #define HID_PRESSRIGHT 8    ///< The HID button is pressed (stay pressed)
-#define HID_PAUSE 25    ///< Pause ms between every command execution
+
+#define HID_PAUSE 25    ///< Pause ms between commands execution
+#define CLICK_PAUSE 50  ///< Pause ms showing a mouse button click
 
 // Hid motion commands
 #define CURSOR_LEFT 'L'     ///< Continuous motion in one direction

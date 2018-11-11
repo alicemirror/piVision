@@ -52,7 +52,7 @@
 
    @subsection Operating Conditions
 
-   @version 0.1
+   @version 0.2
    @author Enrico Miglino <enrico.miglino@dekimo.com>
    @author Balearic Dynamics <balearicdynamics@gmail.com>
    @date November 2018
@@ -79,6 +79,7 @@ void setup() {
   strip.setBrightness(BRIGHTNESS);
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
+  motionWipeCounter = 0;
 
   setColor(FIRE1);
   delay(INIT_DELAY);
@@ -193,12 +194,11 @@ void loop() {
         } // Client available
       } // client connected
     } // Available data
-else {
-    // Client is connected but no new commands are sent,
-    // process eventually only the motion commands
-    processCommand(clientCommand);
-//    processMotion();
-}
+    else {
+      // Client is connected but no new commands are sent,
+      // process eventually only the motion commands
+      processCommand(clientCommand);
+    }
     // Check if the development mode has been set via
     // hardware switch. After setting to the maintenance
     // mode the device should be reset as this condition
@@ -230,77 +230,98 @@ void processCommand(char c) {
     case CURSOR_LEFT:
       hidStatus = HID_MOTION;
       showHIDStatus();
+      motionWipe(CYAN);
       clientCommand = c;
       Mouse.move(0 - MOUSE_STEPS, 0, 0);
       break;
     case CURSOR_RIGHT:
       hidStatus = HID_MOTION;
       showHIDStatus();
+      motionWipe(CYAN);
       clientCommand = c;
       Mouse.move(MOUSE_STEPS, 0, 0);
       break;
     case CURSOR_UP:
       hidStatus = HID_MOTION;
       showHIDStatus();
+      motionWipe(CYAN);
       clientCommand = c;
       Mouse.move(0, 0 - MOUSE_STEPS, 0);
       break;
     case CURSOR_DOWN:
       hidStatus = HID_MOTION;
       showHIDStatus();
+      motionWipe(CYAN);
       clientCommand = c;
       Mouse.move(0, MOUSE_STEPS, 0);
       break;
     case CURSOR_PAUSE:
       hidStatus = HID_IDLEON;
       showHIDStatus();
+      motionWipeOff();
       clientCommand = c;
       break;
     case CLICK_LEFT:
       hidStatus = HID_PRESSLEFT;
       showHIDStatus();
+      motionWipeOff();
       clientCommand = 0x00;
       Mouse.click(MOUSE_LEFT);
+      showMouseButtonClick(PIXWHITE, MOUSE_LEFT);
       hidStatus = HID_IDLEON;
       showHIDStatus();
       break;
     case CLICK_MID:
       hidStatus = HID_PRESSMID;
       showHIDStatus();
+      motionWipeOff();
       clientCommand = 0x00;
       Mouse.click(MOUSE_MIDDLE);
+      showMouseButtonClick(PIXWHITE, MOUSE_MIDDLE);
       hidStatus = HID_IDLEON;
       showHIDStatus();
       break;
     case CLICK_RIGHT:
       hidStatus = HID_PRESSRIGHT;
       showHIDStatus();
+      motionWipeOff();
       clientCommand = 0x00;
       Mouse.click(MOUSE_RIGHT);
+      showMouseButtonClick(PIXWHITE, MOUSE_RIGHT);
       hidStatus = HID_IDLEON;
       showHIDStatus();
       break;
     case PRESS_LEFT:
       hidStatus = HID_PRESSLEFT;
       showHIDStatus();
+      motionWipeOff();
       Mouse.press(MOUSE_LEFT);
+      showMouseButton(PIXWHITE, MOUSE_LEFT);
       clientCommand = 0x00;
       break;
     case PRESS_MID:
       hidStatus = HID_PRESSMID;
       showHIDStatus();
+      motionWipeOff();
       Mouse.press(MOUSE_MIDDLE);
+      showMouseButton(PIXWHITE, MOUSE_MIDDLE);
       clientCommand = 0x00;
       break;
     case PRESS_RIGHT:
       hidStatus = HID_PRESSRIGHT;
       showHIDStatus();
+      motionWipeOff();
       Mouse.press(MOUSE_RIGHT);
+      showMouseButton(PIXWHITE, MOUSE_RIGHT);
       clientCommand = 0x00;
       break;
     case BUTTON_RELEASE:
       hidStatus = HID_IDLEON;
       showHIDStatus();
+      motionWipeOff();
+      showMouseButton(PIXOFF, MOUSE_LEFT);
+      showMouseButton(PIXOFF, MOUSE_MIDDLE);
+      showMouseButton(PIXOFF, MOUSE_RIGHT);
       Mouse.release();
       clientCommand = c;
       break;
@@ -391,6 +412,88 @@ void delayLoop(uint32_t c, int cycles) {
   for (j = 0; j < cycles; j++) {
     colorWipeOnOff(c, CONNECTION_DELAY);
   }
+}
+
+/**
+   Set to off the last pixel set to on by motionWipe
+*/
+void motionWipeOff() {
+  if (motionWipeCounter == 1) {
+    strip.setPixelColor(NUM_LEDS - 1, PIXOFF);
+  } else {
+    strip.setPixelColor(motionWipeCounter - 1, PIXOFF);
+  }
+}
+
+/**
+   motionWipe function is called in the main loop
+   interlaced with the other commands when a motion
+   command is received and wipe one step every main
+   loop cycle until the command changes.
+
+   @note The motion Wipe cycle from position 1 because the
+   position 0 is reserved to show the color-encoded current
+   action
+
+   @param c The color
+*/
+void motionWipe(uint32_t c) {
+  // Set the previous pixel to off
+  if (motionWipeCounter == 1) {
+    strip.setPixelColor(NUM_LEDS - 1, PIXOFF);
+  } else {
+    strip.setPixelColor(motionWipeCounter - 1, PIXOFF);
+  }
+  strip.show();
+  // Set the color to the current position
+  strip.setPixelColor(motionWipeCounter++, c);
+  // Set off the previous color
+  if (motionWipeCounter == NUM_LEDS) {
+    // We have lightened the last pixel on the strip
+    // Reset the counter to the first position.
+    motionWipeCounter = 1;
+  }
+}
+
+/**
+   Shows the desired mouse button on the display
+   of the selected color. Every mouse button is
+   shown in a different position occupying two LEDs
+
+   @warning The buttonID uses the same constants of the Mouse
+   library MOUSE_MIDDLE, MOUSE_LEFT, MOUSE_RIGHT
+
+   @param c The color
+   @param buttonID The mouse button ID (three mouse buttons)
+*/
+void showMouseButton(uint32_t c, int buttonID) {
+  switch (buttonID) {
+    case MOUSE_LEFT:    // Pix 1 & 2
+      strip.setPixelColor(2, c);
+      strip.setPixelColor(3, c);
+      break;
+
+    case MOUSE_MIDDLE:  // Pix 3 & 4
+      strip.setPixelColor(4, c);
+      strip.setPixelColor(5, c);
+      break;
+
+    case MOUSE_RIGHT:   // Pix 5 & 6
+      strip.setPixelColor(6, c);
+      strip.setPixelColor(7, c);
+      break;
+  }
+  strip.show();
+}
+
+/**
+   Using the showMouseButton() function act the same
+   but the button click is set to off after a delay
+*/
+void showMouseButtonClick(uint32_t c, int buttonID) {
+  showMouseButton(c, buttonID);
+  delay(CLICK_PAUSE);
+  showMouseButton(PIXOFF, buttonID);
 }
 
 /**

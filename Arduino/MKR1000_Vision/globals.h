@@ -22,9 +22,11 @@
 #define SERVER_PORT 80
 //! Set the network SSID parameter depending on
 //! your WiFi
-#define NET_SSID "Network-Enrico"
+//#define NET_SSID "Network-Enrico"
+#define NET_SSID "QSpinVisitor"
 //! WiFi WPA Password
-#define NET_PASSWD "4nt0n3lla"
+//#define NET_PASSWD "4nt0n3lla"
+#define NET_PASSWD "QSpinGuest2015!"
 
 //! the MDNS name that the board will respond to
 //! Note that the actual MDNS name will have '.local' after
@@ -106,7 +108,7 @@ WiFiMDNSResponder mdnsResponder;
 int connectStatus = WL_IDLE_STATUS;
 
 //! server IP address:
-IPAddress ip(192, 168, 0, 5);
+IPAddress ip(192, 168, 57, 100);
 
 // ====================== NeoPixel globals
 //! Create the NeoPixels library instance and initialize with the

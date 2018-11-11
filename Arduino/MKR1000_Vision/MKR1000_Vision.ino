@@ -468,17 +468,17 @@ void motionWipe(uint32_t c) {
 */
 void showMouseButton(uint32_t c, int buttonID) {
   switch (buttonID) {
-    case MOUSE_LEFT:    // Pix 1 & 2
+    case MOUSE_LEFT:    // Pix 2 & 3
       strip.setPixelColor(2, c);
       strip.setPixelColor(3, c);
       break;
 
-    case MOUSE_MIDDLE:  // Pix 3 & 4
+    case MOUSE_MIDDLE:  // Pix 4 & 5
       strip.setPixelColor(4, c);
       strip.setPixelColor(5, c);
       break;
 
-    case MOUSE_RIGHT:   // Pix 5 & 6
+    case MOUSE_RIGHT:   // Pix 6 & 7
       strip.setPixelColor(6, c);
       strip.setPixelColor(7, c);
       break;
